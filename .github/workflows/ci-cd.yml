@@ -1,0 +1,63 @@
+name: CI/CD Pipeline - Automatización de Pruebas
+
+on:
+  push:
+    branches: [ main, develop, 'feature/*' ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # STAGE 1 & 2: Build + Pruebas Unitarias e Integración (Actividad 2)
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Stage 1 - Build del proyecto
+        run: mvn compile -B
+
+      - name: Stage 2 - Ejecución de Pruebas Unitarias e Integración
+        run: mvn test -B
+
+  # STAGE 3 & 4: Acceptance Tests + Deploy & Rollback Simulation (Actividad 3)
+  acceptance-and-deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Stage 3 - Ejecución de Pruebas de Aceptación
+        run: |
+          echo "Ejecutando suite de pruebas de aceptación..."
+          mvn test -Dtest=SistemaIntegrationTest
+
+      - name: Stage 4 - Despliegue en Ambiente de Pruebas (Canary / Blue-Green)
+        id: deploy
+        run: |
+          echo "Iniciando despliegue automatizado en Ambiente de Pruebas..."
+          echo "Estado del despliegue: EXITO"
+
+      - name: Manejo de Rollback (Mecanismo en caso de fallo)
+        if: failure()
+        run: |
+          echo "FALLO DETECTADO: Ejecutando estrategia de Rollback automático..."
+          echo "Restaurando versión estable previa..."
